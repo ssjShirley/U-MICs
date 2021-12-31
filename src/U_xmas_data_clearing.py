@@ -5,30 +5,19 @@
 import sys
 assert sys.version_info >= (3, 5) # make sure we have Python 3.5+
 import sys,os,uuid,gzip,re,math
+from collections import Counter
 
 from pyspark.sql import SparkSession, functions, types
 from datetime import datetime
 from pyspark.sql.functions import lit
 
 
-
+@functions.udf(returnType=types.IntegerType())
+def getcount(count):
+	return int(count)
 
 def main(in22,in23,in24, in24_23,in25_09, in25_17, in26,output):
-#	#   view_count, , , , 
-#	YTB_schema = types.StructType([
-#		types.StructField('_c0', types.IntegerType()),
-#		types.StructField('datetime', types.TimestampType()),
-#		types.StructField('video_id', types.StringType()),
-#		types.StructField('video_title', types.StringType()),
-#		types.StructField('video_tags', types.StringType()),
-#		types.StructField('video_description', types.StringType()),
-#		types.StructField('upload_date', types.DateType()),		
-#		types.StructField('view_count', types.IntegerType()),
-#		types.StructField('like_count', types.IntegerType()),
-#		types.StructField('subscriber_count', types.IntegerType()),
-#		types.StructField('comment_count', types.IntegerType()),
-#		types.StructField('duration_count', types.StringType()),
-#	])
+# read table from csv file
 	y22 = spark.read.option("multiline", "true")\
 		.option("quote", '"')\
 		.option("header", "true")\
@@ -95,11 +84,89 @@ def main(in22,in23,in24, in24_23,in25_09, in25_17, in26,output):
 	
 	xmas_stats = y22_stat.join(y23_stat,'video_id').join(y24_stat,'video_id').join(y24_23_stat,'video_id').join(y25_09_stat,'video_id').join(y25_17_stat,'video_id').join(y26_stat,'video_id')
 	
-	xmas_description = y23.select('video_title','video_tags','upload_date','duration_count','video_description')
+	
 		
 	xmas_stats.coalesce(1).write.option("header", "true").csv(output+ '/stats')
-	xmas_description.coalesce(1).write.option("header", "true").csv(output+ '/description')
 	
+	# print the common tags in the videp
+	tags = y23.select('video_tags').rdd\
+		.flatMap(lambda x: x[0].replace("[","").replace("]","").lower().split(", ")).coalesce(1)
+	print(Counter(tags.collect()))
+	
+	# create table for statistics of the video upload today 
+	time = [{'date': '12-22'},
+			{'date': '12-23'},
+			{'date': '12-24_noon'},
+			{'date': '12-24_night'},
+			{'date': '12-25_noon'},
+			{'date': '12-25_night'},
+			{'date': '12-26'},
+	]
+	
+	tf = spark.createDataFrame(time)
+	# get the data of 2021-12-22
+	d22 = y22.filter(y22["upload_date"] == '2021-12-22').withColumn('date', lit('12-22')).withColumn('view_22', y22["view_22"].cast(types.IntegerType())).withColumn('like_22', y22["like_22"].cast(types.IntegerType())).withColumn('comment_22', y22["comment_22"].cast(types.IntegerType())).cache()
+	d1 = d22.groupBy('date').agg(
+		functions.count(d22['date']).alias('video_count'),
+		functions.sum('view_22').alias('sum_view'),
+		functions.max('view_22').alias('max_view'),
+		functions.avg('view_22').alias('avg_view'),
+		functions.avg('like_22').alias('avg_like'),
+		functions.avg('comment_22').alias('avg_comment')	
+	)
+	
+	# get the data of 2021-12-23
+	d23 = y23.filter(y23["upload_date"] == '2021-12-23').withColumn('date', lit('12-23')).withColumn('view_23', y23["view_23"].cast(types.IntegerType())).withColumn('like_23', y23["like_23"].cast(types.IntegerType())).withColumn('comment_23', y23["comment_23"].cast(types.IntegerType())).cache()
+	d2 = d23.groupBy('date').agg(
+		functions.count(d23['date']).alias('video_count'),
+		functions.sum('view_23').alias('sum_view'),
+		functions.max('view_23').alias('max_view'),
+		functions.avg('view_23').alias('avg_view'),
+		functions.avg('like_23').alias('avg_like'),
+		functions.avg('comment_23').alias('avg_comment')	
+	)
+	
+	df = d1.union(d2).cache()
+	
+	# get the data of 2021-12-24
+	d24 = y24_23.filter(y24_23["upload_date"] == '2021-12-24').withColumn('date', lit('12-24')).withColumn('view_24', y24_23["view_24_23"].cast(types.IntegerType())).withColumn('like_24', y24_23["like_24_23"].cast(types.IntegerType())).withColumn('comment_24', y24_23["comment_24_23"].cast(types.IntegerType())).cache()
+	d3 = d24.groupBy('date').agg(
+		functions.count(d24['date']).alias('video_count'),
+		functions.sum('view_24').alias('sum_view'),
+		functions.max('view_24').alias('max_view'),
+		functions.avg('view_24').alias('avg_view'),
+		functions.avg('like_24').alias('avg_like'),
+		functions.avg('comment_24').alias('avg_comment')	
+	)
+	
+	df = df.union(d3).cache()
+	
+	# get the data of 2021-12-25
+	d25 = y26.filter(y26["upload_date"] == '2021-12-25').withColumn('date', lit('12-25')).withColumn('view_25', y26["view_26"].cast(types.IntegerType())).withColumn('like_25', y26["like_26"].cast(types.IntegerType())).withColumn('comment_25', y26["comment_26"].cast(types.IntegerType())).cache()
+	d4 = d25.groupBy('date').agg(
+		functions.count(d25['date']).alias('video_count'),
+		functions.sum('view_25').alias('sum_view'),
+		functions.max('view_25').alias('max_view'),
+		functions.avg('view_25').alias('avg_view'),
+		functions.avg('like_25').alias('avg_like'),
+		functions.avg('comment_25').alias('avg_comment')	
+	)
+	
+	df = df.union(d4).cache()
+	
+	# get the data of 2021-12-26
+	d26 = y26.filter(y26["upload_date"] == '2021-12-26').withColumn('date', lit('12-26')).withColumn('view_26', y26["view_26"].cast(types.IntegerType())).withColumn('like_26', y26["like_26"].cast(types.IntegerType())).withColumn('comment_26', y26["comment_26"].cast(types.IntegerType())).cache()
+	d5 = d26.groupBy('date').agg(
+		functions.count(d26['date']).alias('video_count'),
+		functions.sum('view_26').alias('sum_view'),
+		functions.max('view_26').alias('max_view'),
+		functions.avg('view_26').alias('avg_view'),
+		functions.avg('like_26').alias('avg_like'),
+		functions.avg('comment_26').alias('avg_comment')	
+	)
+	
+	df = df.union(d5).cache()
+	df.coalesce(1).write.option("header", "true").csv(output+ '/days_increasing')
 	
 if __name__ == '__main__':
 	in22 = sys.argv[1]
@@ -112,7 +179,7 @@ if __name__ == '__main__':
 	in26 = sys.argv[7]
 	
 	output = sys.argv[8]
-	spark = SparkSession.builder.appName('youtube pull data clearning').getOrCreate()
+	spark = SparkSession.builder.appName('youtube pull data clearing').getOrCreate()
 	assert spark.version >= '3.0' # make sure we have Spark 3.0+
 	spark.sparkContext.setLogLevel('WARN')
 	sc = spark.sparkContext
