@@ -137,7 +137,7 @@ def getinscr(first, last):
 		return last-first
 	
 def main(input1,input2,output):
-	
+# reading data
 	y23 = spark.read.option("multiline", "true")\
 		.option("quote", '"')\
 		.option("header", "true")\
@@ -146,14 +146,16 @@ def main(input1,input2,output):
 
 		
 	data = spark.read.option("header","true").csv(input2, schema=YTB_stat).cache()
+
 	
+	#elt clearning data for prediction	
 	d1 = y23.select('video_id',
 		yeartoday('upload_date').alias('upload_days'),
 		showfreq('video_title').alias('title'),
 		showfreq('video_description').alias('description'),
 		showTagFreq('video_tags').alias('tags'),
 		getduration("duration_count").alias('duration')
-	)
+	).cache()
 	d2 = data.select('video_id', 'subscriber_count', 'view22', 'like_22','comment_22',
 		getinscr("view22",'view23').alias('view_inc_23'),
 		getinscr("view23",'view_24').alias('view_inc_24_noon'),
@@ -163,7 +165,7 @@ def main(input1,input2,output):
 		
 		getinscr("like_22",'like_23').alias('like_inc_23'),
 		getinscr("like_23",'like_24').alias('like_inc_24_noon'),
-		getinscr("like_24",'like_24_23').alias('like_inc_23_night'),
+		getinscr("like_24",'like_24_23').alias('like_inc_24_night'),
 		getinscr("like_24_23",'like_25_9').alias('like_inc_25_noon'),
 		getinscr("like_25_9",'like_25_17').alias('like_inc_25_night'),
 		
@@ -175,10 +177,135 @@ def main(input1,input2,output):
 		'like_26','comment_26','view_26'
 		
 		
-	)
+	).cache()
 	
 	d3 = d1.join(d2,'video_id')
-	d3.coalesce(1).write.option("header", "true").csv(output)
+	d3.coalesce(1).write.option("header", "true").csv(output +'/clearing table')
+	
+	#find the stat increase for total date and get the sum view, max view, average view, avg like and avg comment
+	#get data of 2021-12-23
+	d23 = d2.select('view_inc_23','like_inc_23','comment_inc_23').withColumn('date', lit('12-23')).cache()
+	t1 = d23.groupBy('date').agg(
+		functions.sum('view_inc_23').alias('sum_view'),
+		functions.max('view_inc_23').alias('max_view'),
+		functions.avg('view_inc_23').alias('avg_view'),
+		functions.avg('like_inc_23').alias('avg_like'),
+		functions.avg('comment_inc_23').alias('avg_comment')	
+	)
+	
+	#get data of 2021-12-24
+	d24_noon = d2.select('view_inc_24_noon','like_inc_24_noon','comment_inc_24_noon').withColumn('date', lit('12-24_noon')).cache()
+	t2 = d24_noon.groupBy('date').agg(
+		
+		functions.sum('view_inc_24_noon').alias('sum_view'),
+		functions.max('view_inc_24_noon').alias('max_view'),
+		functions.avg('view_inc_24_noon').alias('avg_view'),
+		functions.avg('like_inc_24_noon').alias('avg_like'),
+		functions.avg('comment_inc_24_noon').alias('avg_comment')	
+	)
+	
+	
+	d24_night = d2.select('view_inc_24_night','like_inc_24_night','comment_inc_24_night').withColumn('date', lit('12-24_night')).cache()
+	t3 = d24_night.groupBy('date').agg(
+		
+		functions.sum('view_inc_24_night').alias('sum_view'),
+		functions.max('view_inc_24_night').alias('max_view'),
+		functions.avg('view_inc_24_night').alias('avg_view'),
+		functions.avg('like_inc_24_night').alias('avg_like'),
+		functions.avg('comment_inc_24_night').alias('avg_comment')	
+	)
+	tf = t1.union(t2).cache()
+	tf = tf.union(t3).cache()
+	
+	#get data of 2021-12-25
+	d25_noon = d2.select('view_inc_25_noon','like_inc_25_noon','comment_inc_25_noon').withColumn('date', lit('12-25_noon')).cache()
+	t4 = d25_noon.groupBy('date').agg(
+		
+		functions.sum('view_inc_25_noon').alias('sum_view'),
+		functions.max('view_inc_25_noon').alias('max_view'),
+		functions.avg('view_inc_25_noon').alias('avg_view'),
+		functions.avg('like_inc_25_noon').alias('avg_like'),
+		functions.avg('comment_inc_25_noon').alias('avg_comment')	
+	)
+	
+	
+	d25_night = d2.select('view_inc_25_night','like_inc_25_night','comment_inc_25_night').withColumn('date', lit('12-25_night')).cache()
+	t5 = d25_night.groupBy('date').agg(
+		
+		functions.sum('view_inc_25_night').alias('sum_view'),
+		functions.max('view_inc_25_night').alias('max_view'),
+		functions.avg('view_inc_25_night').alias('avg_view'),
+		functions.avg('like_inc_25_night').alias('avg_like'),
+		functions.avg('comment_inc_25_night').alias('avg_comment')	
+	)
+	
+	tf = tf.union(t4).union(t5).cache()
+	tf.coalesce(1).write.option("header", "true").csv(output +'/total inc')	
+	
+	
+	
+	#find the stat increase for top 200 date order by 12-22 view and get the sum view, max view, average view, avg like and avg comment
+	d4 = d2.orderBy('view22', ascending=False).limit(500).cache()
+	
+	
+	#get data of 2021-12-23
+	d23 = d4.select('view_inc_23','like_inc_23','comment_inc_23').withColumn('date', lit('12-23')).cache()
+	t1 = d23.groupBy('date').agg(
+		functions.sum('view_inc_23').alias('sum_view'),
+		functions.max('view_inc_23').alias('max_view'),
+		functions.avg('view_inc_23').alias('avg_view'),
+		functions.avg('like_inc_23').alias('avg_like'),
+		functions.avg('comment_inc_23').alias('avg_comment')	
+	)
+	
+	#get data of 2021-12-24
+	d24_noon = d4.select('view_inc_24_noon','like_inc_24_noon','comment_inc_24_noon').withColumn('date', lit('12-24_noon')).cache()
+	t2 = d24_noon.groupBy('date').agg(
+		
+		functions.sum('view_inc_24_noon').alias('sum_view'),
+		functions.max('view_inc_24_noon').alias('max_view'),
+		functions.avg('view_inc_24_noon').alias('avg_view'),
+		functions.avg('like_inc_24_noon').alias('avg_like'),
+		functions.avg('comment_inc_24_noon').alias('avg_comment')	
+	)
+	
+	
+	d24_night = d4.select('view_inc_24_night','like_inc_24_night','comment_inc_24_night').withColumn('date', lit('12-24_night')).cache()
+	t3 = d24_night.groupBy('date').agg(
+		
+		functions.sum('view_inc_24_night').alias('sum_view'),
+		functions.max('view_inc_24_night').alias('max_view'),
+		functions.avg('view_inc_24_night').alias('avg_view'),
+		functions.avg('like_inc_24_night').alias('avg_like'),
+		functions.avg('comment_inc_24_night').alias('avg_comment')	
+	)
+	tf = t1.union(t2).union(t3).cache()
+	
+	#get data of 2021-12-25
+	d25_noon = d4.select('view_inc_25_noon','like_inc_25_noon','comment_inc_25_noon').withColumn('date', lit('12-25_noon')).cache()
+	t4 = d25_noon.groupBy('date').agg(
+		
+		functions.sum('view_inc_25_noon').alias('sum_view'),
+		functions.max('view_inc_25_noon').alias('max_view'),
+		functions.avg('view_inc_25_noon').alias('avg_view'),
+		functions.avg('like_inc_25_noon').alias('avg_like'),
+		functions.avg('comment_inc_25_noon').alias('avg_comment')	
+	)
+	
+	
+	d25_night = d4.select('view_inc_25_night','like_inc_25_night','comment_inc_25_night').withColumn('date', lit('12-25_night')).cache()
+	t5 = d25_night.groupBy('date').agg(
+		
+		functions.sum('view_inc_25_night').alias('sum_view'),
+		functions.max('view_inc_25_night').alias('max_view'),
+		functions.avg('view_inc_25_night').alias('avg_view'),
+		functions.avg('like_inc_25_night').alias('avg_like'),
+		functions.avg('comment_inc_25_night').alias('avg_comment')	
+	)
+	
+	tf = tf.union(t4).union(t5).cache()
+	
+	tf.coalesce(1).write.option("header", "true").csv(output +'/top inc')	
 if __name__ == '__main__':
 	input1 = sys.argv[1]
 	
