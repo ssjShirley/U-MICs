@@ -15,7 +15,15 @@ In This project we have 2 main parts:
 
       >After  the first step, we know the basic algorithn of Youtube System so want to build a new search system which more focus on video tags and user can have more filters, so they can have more appropriate result.
 
-      >we Update the youtube_api.ipynb which can save and update Youtube video information in AWS RDS database. And I still Uploda this dataset to AWS S3 bucket so we can use mySQL or sql function in AWS to select the video.
+      >In this part we select almost 7000+ video(relax, study playlists, should be increaded to more types. If you have some favourite playlist, please share to us) about playlist, then in these videos we find the most popular tags is:  
+      <kbd>lofi</kbd>, <kbd>relax</kbd>, <kbd>chill</kbd>, <kbd>study</kbd>, <kbd>hiphop</kbd>, <kbd>jazz</kbd>, <kbd>beat</kbd>, <kbd>sleep</kbd>, <kbd>meditation</kbd>, <kbd>lounge</kbd>, <kbd>cafe</kbd>, <kbd>piano</kbd>, <kbd>others</kbd>
+
+      >And we can sort the video by :  
+      <kbd>most view</kbd>, <kbd>most comment</kbd>, <kbd>most like</kbd>, <kbd>most follors</kbd>  
+      users still can select the video by upload date and duration time.
+      
+      
+      >we Update the youtube_api.ipynb which can save and update Youtube video information in AWS RDS database. And I still Uploda this dataset to AWS S3 bucket so we can use mySQL or sql function in AWS to select the videos.
 
 * For the Future
     > 1. we are working on web vision for our search system by django which user who without computer knowledge still can using this system.
